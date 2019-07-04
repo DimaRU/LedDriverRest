@@ -12,11 +12,11 @@
 #define PrefsFilePath "/preferences.bin"
 #define PrefsSaveTimeout 10000
 
-#define BunttonTapState 0
-
 enum LedsPowerState {
   On, Off, Night
 };
+
+#define REST_API_PORT 80
 
 extern SimpleTimer timer;
 extern int yellowLevel;
@@ -31,7 +31,7 @@ extern int alarmHour;
 extern int alarmMinute;
 extern bool alarmEnabled;
 extern long gmtOffsetSec;
-
+extern char locationName[100];
 
 
 void ledsOff();

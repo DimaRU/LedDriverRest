@@ -15,6 +15,7 @@
 #include "Credientals.h"
 
 int rebootCounter = 0;
+char locationName[100];
 SimpleTimer timer;
 
 static void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info);
@@ -108,11 +109,11 @@ static void initialise_mdns(void)
     // mdns_instance_name_set(MDNS_INSTANCE);
 
     mdns_txt_item_t serviceTxtData[] = {
-        {"board", "esp32"},
-        {"location", "room"},
-        {"version", "1"}
+        {"type", "Yellow-White-Night"},
+        {"version", "1"},
+        {"location", locationName},
     };
 
-    ESP_ERROR_CHECK(mdns_service_add("LedDriverRest", "_http", "_tcp", 80, serviceTxtData,
+    ESP_ERROR_CHECK(mdns_service_add("LedDriverRest", "_led", "_tcp", REST_API_PORT, serviceTxtData,
                                      sizeof(serviceTxtData) / sizeof(serviceTxtData[0])));
 }

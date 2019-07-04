@@ -7,7 +7,7 @@
 #include "esp_system.h"
 #include "esp_err.h"
 #include "nvs_flash.h"
-#include "apps/sntp/sntp.h"
+#include "lwip/apps/sntp.h"
 #include <SimpleTimer.h>
 
 #include "LedDriver.h"
@@ -25,6 +25,7 @@ struct Preferences {
     int alarmMinute;
     bool alarmEnabled;
     long gmtOffsetSec;
+    char locationName[100];
 };
 
 static struct Preferences currentPrefs;
@@ -58,6 +59,7 @@ void savePrefs() {
     currentPrefs.alarmMinute = alarmMinute;
     currentPrefs.alarmEnabled = alarmEnabled;
     currentPrefs.gmtOffsetSec = gmtOffsetSec;
+    memcpy(currentPrefs.locationName, locationName, sizeof(locationName));
 
     if (memcmp(&currentPrefs, &savedPrefs, sizeof(currentPrefs)) == 0) return;
     writePrefs();
@@ -100,6 +102,8 @@ void restorePrefs() {
         alarmMinute = savedPrefs.alarmMinute;
         alarmEnabled = savedPrefs.alarmEnabled;
         gmtOffsetSec = savedPrefs.gmtOffsetSec;
+        memcpy(locationName, savedPrefs.locationName, sizeof(savedPrefs.locationName));
+        Serial.printf("Location: %s\n", locationName);
     } else {
         Serial.println("Preferences set init values");
         rebootCounter = 0;
@@ -114,6 +118,8 @@ void restorePrefs() {
         alarmMinute = 0;
         alarmEnabled = false;
         gmtOffsetSec = 10800L;
+        memset(locationName, 0, sizeof(locationName));
+        strcpy(locationName, "Room");
     }
     nightLedOn(false);
     switch(powerState) {

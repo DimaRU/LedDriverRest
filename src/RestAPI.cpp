@@ -8,6 +8,8 @@
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
 #include <SimpleTimer.h>
+#include "mdns.h"
+
 #include "LedDriver.h"
 
 int yellowLevel = SLIDER_MAXVALUE /2;
@@ -20,13 +22,14 @@ static void newLedValues(int yellowLevel, int whiteLevel, enum LedsPowerState po
 ArRequestHandlerFunction getAlarm(AsyncWebServerRequest *request);
 ArJsonRequestHandlerFunction postAlarm(AsyncWebServerRequest *request, JsonVariant &root);
 ArRequestHandlerFunction getParams(AsyncWebServerRequest *request);
+ArJsonRequestHandlerFunction postParams(AsyncWebServerRequest *request, JsonVariant &root);
 void restAPISetup(AsyncWebServer *server);
 
 static AsyncWebServer *server = NULL;
 void start_webserver(void)
 {
     if (server == NULL) {
-        server = new AsyncWebServer(80);
+        server = new AsyncWebServer(REST_API_PORT);
         restAPISetup(server);
     }
 }
@@ -56,6 +59,11 @@ void restAPISetup(AsyncWebServer *server) {
     handler1->setMethod(HTTP_POST);
     server->addHandler(handler1);
 
+    AsyncCallbackJsonWebHandler* handler2 = new AsyncCallbackJsonWebHandler("/api/params", &postParams);
+    handler2->setMethod(HTTP_POST);
+    server->addHandler(handler2);
+
+
     server->onNotFound(notFound);
     server->begin();
 }
@@ -66,8 +74,18 @@ ArRequestHandlerFunction getParams(AsyncWebServerRequest *request) {
 
     root["slider_min"] = SLIDER_MINVALUE;
     root["slider_max"] = SLIDER_MAXVALUE;
+    root["location"] = locationName;
     response->setLength();
     request->send(response);
+    return 0;
+}
+
+ArJsonRequestHandlerFunction postParams(AsyncWebServerRequest *request, JsonVariant &root) {
+    String location = root["location"];
+    location.toCharArray(locationName, sizeof(locationName));
+    mdns_service_txt_item_set("_led", "_tcp", "location", locationName);
+
+    request->send(204);
     return 0;
 }
 
@@ -99,12 +117,12 @@ ArRequestHandlerFunction getLed(AsyncWebServerRequest *request) {
 ArJsonRequestHandlerFunction postLed(AsyncWebServerRequest *request, JsonVariant &root) {
     enum LedsPowerState powerState = On;
 
-    const char* powerStateString = root["power_state"];
-    if (strcmp(powerStateString, "on") == 0) {
+    String powerStateString = root["power_state"];
+    if (powerStateString == "on") {
         powerState = On;
-    } else if (strcmp(powerStateString, "off") == 0) {
+    } else if (powerStateString == "off") {
         powerState = Off;
-    } else if (strcmp(powerStateString, "night") == 0) {
+    } else if (powerStateString == "night") {
         powerState = Night;
     } else {
         request->send(400);
