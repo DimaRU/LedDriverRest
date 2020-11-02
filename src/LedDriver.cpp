@@ -81,8 +81,12 @@ static void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
 {
   switch (event)
   {
+  case SYSTEM_EVENT_STA_CONNECTED:
+    // WiFi.enableIpV6();
+    break;
   case SYSTEM_EVENT_STA_DISCONNECTED:
-    if (info.disconnected.reason == 6) {
+    if (info.disconnected.reason == 6)
+    {
       Serial.println("NOT_AUTHED reconnect");
       WiFi.reconnect();
     }
@@ -90,13 +94,18 @@ static void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
     stop_webserver();
     break;
   case SYSTEM_EVENT_STA_GOT_IP:
-      Serial.printf("Got IP: '%s'\n", 
-              ip4addr_ntoa(&info.got_ip.ip_info.ip));
+    Serial.print("STA IPv4: ");
+    Serial.println(WiFi.localIP());
+    /* Start the web server */
+    start_webserver();
+    initialise_mdns();
+    break;
+  case SYSTEM_EVENT_AP_STA_GOT_IP6:
+    //both interfaces get the same event
+    Serial.print("STA IPv6: ");
+    Serial.println(WiFi.localIPv6());
 
-      /* Start the web server */
-      start_webserver();
-      initialise_mdns();
-      break;
+    break;
   default:
     break;
   }
