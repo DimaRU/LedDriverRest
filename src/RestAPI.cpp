@@ -18,6 +18,7 @@ enum LedsPowerState powerState = On;
 
 ArRequestHandlerFunction getLed(AsyncWebServerRequest *request);
 ArJsonRequestHandlerFunction postLed(AsyncWebServerRequest *request, JsonVariant &root);
+ArJsonRequestHandlerFunction postLedOffet(AsyncWebServerRequest *request, JsonVariant &root);
 static void newLedValues(int yellowLevel, int whiteLevel, enum LedsPowerState powerState);
 ArRequestHandlerFunction getAlarm(AsyncWebServerRequest *request);
 ArJsonRequestHandlerFunction postAlarm(AsyncWebServerRequest *request, JsonVariant &root);
@@ -51,18 +52,22 @@ void restAPISetup(AsyncWebServer *server) {
     server->on("/api/alarm", HTTP_GET, &getAlarm);
     server->on("/api/params", HTTP_GET, &getParams);
 
-    AsyncCallbackJsonWebHandler* handler = new AsyncCallbackJsonWebHandler("/api/led", &postLed);
+    AsyncCallbackJsonWebHandler* handler;
+    handler = new AsyncCallbackJsonWebHandler("/api/led", &postLed);
     handler->setMethod(HTTP_POST);
     server->addHandler(handler);
 
-    AsyncCallbackJsonWebHandler* handler1 = new AsyncCallbackJsonWebHandler("/api/alarm", &postAlarm);
-    handler1->setMethod(HTTP_POST);
-    server->addHandler(handler1);
+    handler = new AsyncCallbackJsonWebHandler("/api/ledoffset", &postLedOffet);
+    handler->setMethod(HTTP_POST);
+    server->addHandler(handler);
 
-    AsyncCallbackJsonWebHandler* handler2 = new AsyncCallbackJsonWebHandler("/api/params", &postParams);
-    handler2->setMethod(HTTP_POST);
-    server->addHandler(handler2);
+    handler = new AsyncCallbackJsonWebHandler("/api/alarm", &postAlarm);
+    handler->setMethod(HTTP_POST);
+    server->addHandler(handler);
 
+    handler = new AsyncCallbackJsonWebHandler("/api/params", &postParams);
+    handler->setMethod(HTTP_POST);
+    server->addHandler(handler);
 
     server->onNotFound(notFound);
     server->begin();
@@ -93,7 +98,7 @@ ArRequestHandlerFunction getLed(AsyncWebServerRequest *request) {
     AsyncJsonResponse* response = new AsyncJsonResponse();
     JsonVariant& root = response->getRoot();
     
-    const char* powerStateString;
+    const char* powerStateString = "on";
     switch (powerState)
     {
     case On:
@@ -133,6 +138,66 @@ ArJsonRequestHandlerFunction postLed(AsyncWebServerRequest *request, JsonVariant
     newLedValues(yellowLevel, whiteLevel, powerState);
 
     request->send(204);
+    return 0;
+}
+
+ArJsonRequestHandlerFunction postLedOffet(AsyncWebServerRequest *request, JsonVariant &root) {
+    enum LedsPowerState powerState = On;
+
+    String powerStateString = root["power_state"];
+    if (powerStateString == "on") {
+        powerState = On;
+    } else if (powerStateString == "off") {
+        powerState = Off;
+    } else if (powerStateString == "night") {
+        powerState = Night;
+    } else {
+        request->send(400);
+    }
+
+    int yellowOffset = root["yellow_offset"];
+    int whiteOffset = root["white_offset"];
+    int newYellowLevel = yellowLevel + yellowOffset;
+    int newWhiteLevel = whiteLevel + whiteOffset;
+
+    if (newYellowLevel < 0) {
+        newYellowLevel = 0;
+    }
+    if (newYellowLevel > SLIDER_MAXVALUE) {
+        newYellowLevel = SLIDER_MAXVALUE;
+    }
+    if (newWhiteLevel < 0) {
+        newWhiteLevel = 0;
+    }
+    if (newWhiteLevel > SLIDER_MAXVALUE) {
+        newWhiteLevel = SLIDER_MAXVALUE;
+    }
+
+    newLedValues(newYellowLevel, newWhiteLevel, powerState);
+
+    AsyncJsonResponse* response = new AsyncJsonResponse();
+    JsonVariant& responceRoot = response->getRoot();
+    
+    const char* powerStatePtr;
+    switch (powerState)
+    {
+    case On:
+        powerStatePtr = "on";
+        break;
+    case Off:
+        powerStatePtr = "off";
+        break;
+    case Night:
+        powerStatePtr = "night";
+        break;
+    }
+    responceRoot["yellow_level"] = yellowLevel;
+    responceRoot["white_level"] = whiteLevel;
+    responceRoot["power_state"] = powerStatePtr;
+    response->setLength();
+    request->send(response);
+
+//    request->send(204);
     return 0;
 }
 
